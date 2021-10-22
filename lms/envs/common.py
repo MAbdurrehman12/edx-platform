@@ -1001,6 +1001,9 @@ MARKETING_EMAILS_OPT_IN = False
 # .. toggle_tickets: 'https://openedx.atlassian.net/browse/VAN-622'
 ENABLE_COPPA_COMPLIANCE = False
 
+# VAN-741 - save for latter api put behind a flag to make it only available for edX
+ENABLE_SAVE_FOR_LATTER = False
+
 ############################# SET PATH INFORMATION #############################
 PROJECT_ROOT = path(__file__).abspath().dirname().dirname()  # /edx-platform/lms
 REPO_ROOT = PROJECT_ROOT.dirname()

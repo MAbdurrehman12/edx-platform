@@ -30,3 +30,5 @@ urlpatterns = [
     ),
 
 ]
+if settings.ENABLE_SAVE_FOR_LATTER:
+    urlpatterns.append(url(r'^save_for_later$', views.save_for_later_course, name="save_for_later"))

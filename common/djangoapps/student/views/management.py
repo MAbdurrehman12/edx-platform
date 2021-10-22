@@ -42,6 +42,8 @@ from lms.djangoapps.courseware.courses import get_courses, sort_by_announcement,
 from common.djangoapps.edxmako.shortcuts import marketing_link, render_to_response, render_to_string  # lint-amnesty, pylint: disable=unused-import
 from common.djangoapps.entitlements.models import CourseEntitlement
 from common.djangoapps.student.helpers import get_next_url_for_login_page, get_redirect_url_with_host
+from common.djangoapps.util.course import get_link_for_about_page
+from common.djangoapps.track import segment
 from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
 from openedx.core.djangoapps.catalog.utils import get_programs_with_type
 from openedx.core.djangoapps.embargo import api as embargo_api
@@ -56,7 +58,7 @@ from openedx.core.djangolib.markup import HTML, Text
 from openedx.features.enterprise_support.utils import is_enterprise_learner
 from common.djangoapps.student.email_helpers import generate_activation_email_context
 from common.djangoapps.student.helpers import DISABLE_UNENROLL_CERT_STATES, cert_info
-from common.djangoapps.student.message_types import AccountActivation, EmailChange, EmailChangeConfirmation, RecoveryEmailCreate  # lint-amnesty, pylint: disable=line-too-long
+from common.djangoapps.student.message_types import AccountActivation, EmailChange, EmailChangeConfirmation, RecoveryEmailCreate, SaveForLatter  # lint-amnesty, pylint: disable=line-too-long
 from common.djangoapps.student.models import (  # lint-amnesty, pylint: disable=unused-import
     AccountRecovery,
     CourseEnrollment,
@@ -75,6 +77,7 @@ from common.djangoapps.student.signals import REFUND_ORDER
 from common.djangoapps.util.db import outer_atomic
 from common.djangoapps.util.json_request import JsonResponse
 from xmodule.modulestore.django import modulestore
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 
 log = logging.getLogger("edx.student")
 
@@ -926,3 +929,55 @@ def change_email_settings(request):
         )
 
     return JsonResponse({"success": True})
+
+
+@require_POST
+@ensure_csrf_cookie
+def save_for_later_course(request):
+    """
+      Send email to learner for save for latter course.
+    """
+    from openedx.core.djangoapps.user_api.accounts.api import get_email_validation_error
+
+    user = request.user
+    course_id = request.POST.get('course_id')
+    email = request.POST.get('email')
+    course_key = CourseKey.from_string(course_id)
+    if get_email_validation_error(email):
+        raise ValueError(_('Valid e-mail address required.'))
+
+    try:
+        course_overview = CourseOverview.objects.get(id=course_key)
+    except CourseOverview.DoesNotExist:
+        return JsonResponse({"success": False, "status": 404}, status=404)
+
+    message_context = {
+        'course_image_url': course_overview.course_image_url,
+        'partner_image_url': None,
+        'enroll_course_url': '/register?course_id={course_key}&enrollment_action=enroll&email_opt_in=false&'
+                             'save_for_latter=true'.format(course_key=course_key),
+        'view_course_url': get_link_for_about_page(course_overview),
+        'course_key': course_key,
+        'display_name': course_overview.display_name,
+        'short_description': course_overview.short_description,
+        'lms_url': configuration_helpers.get_value('LMS_ROOT_URL', settings.LMS_ROOT_URL),
+        'from_address': configuration_helpers.get_value('email_from_address', settings.DEFAULT_FROM_EMAIL),
+    }
+
+    msg = SaveForLatter().personalize(
+        recipient=Recipient(lms_user_id=0, email_address=email),
+        language=preferences_api.get_user_preference(user, LANGUAGE_KEY),
+        user_context=message_context,
+    )
+    try:
+        ace.send(msg)
+        segment.track(
+            user.id,
+            "edx.bi.user.send.email.save.for.latter",
+        )
+    except Exception:  # pylint: disable=broad-except
+        log.warning('Unable to send save for latter email ', exc_info=True)
+        transaction.set_rollback(True)
+        return JsonResponse({"success": False, "status": 400}, status=400)
+    else:
+        return JsonResponse({"success": True, "status": 200}, status=200)

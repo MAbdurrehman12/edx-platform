@@ -67,6 +67,9 @@ class AdminCourseModePageTest(ModuleStoreTestCase):
 
         # Verify that on the edit page the datetime value appears as UTC.
         resp = self.client.get(reverse('admin:course_modes_coursemode_change', args=(1,)))
+
+        assert resp.content == 'abc'
+
         self.assertContains(resp, expiration.date())
         self.assertContains(resp, expiration.time())
 

@@ -475,19 +475,22 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
                 # Log accumulated information stored on request for each change of user
                 extra_logs = []
 
+                response_session_id = getattr(getattr(request, 'session', None), 'session_key', None)
+
                 # One of the possibilities for why we get an occasional
                 # safe-session user mismatch is that the wrong session is
                 # retrieved from cache. This additional logging should reveal
                 # any such mismatch (without revealing the actual session ID
                 # in logs).
-                session_hashes = [
-                    ('parsed_cookie', obscure_token(request.cookie_session_field)),
-                    ('at_request', obscure_token(request.safe_cookie_verified_session_id)),
-                    ('at_response', obscure_token(request.session.session_key)),
+                sessions_raw = [
+                    ('parsed_cookie', request.cookie_session_field),
+                    ('at_request', request.safe_cookie_verified_session_id),
+                    ('at_response', response_session_id),
                 ]
-
-                session_id_changed = hasattr(request.session, 'session_key') and\
-                    request.safe_cookie_verified_session_id != request.session.session_key
+                # Note that this is an ordered list of pairs, not a
+                # dict, so that the output order is consistent.
+                session_hashes = [(k, obscure_token(v)) for (k, v) in sessions_raw]
+                session_id_changed = len(set(kv[1] for kv in sessions_raw)) > 1
 
                 # delete old session id for security
                 del request.safe_cookie_verified_session_id
@@ -502,6 +505,7 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
                 )
                 for source_name, id_hash in session_hashes:
                     set_custom_attribute(f'safe_sessions.session_id_hash.{source_name}', id_hash)
+                set_custom_attribute(f'safe_sessions.session_id_changed', session_id_changed)
 
                 if hasattr(request, 'debug_user_changes'):
                     extra_logs.append(

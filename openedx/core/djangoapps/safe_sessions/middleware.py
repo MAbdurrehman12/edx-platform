@@ -329,8 +329,8 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
             else:
                 request.COOKIES[settings.SESSION_COOKIE_NAME] = safe_cookie_data.session_id  # Step 2
 
-        # Save off for debugging and logging in _verify_user
-        request.session_cookie_string = cookie_data_string
+                # Save off for debugging and logging in _verify_user
+                request.cookie_session_field = safe_cookie_data.session_id
 
         process_request_response = super().process_request(request)  # Step 3  # lint-amnesty, pylint: disable=assignment-from-no-return, super-with-arguments
         if process_request_response:
@@ -481,7 +481,7 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
                 # any such mismatch (without revealing the actual session ID
                 # in logs).
                 session_hashes = [
-                    ('cookie_field', obscure_token(request.session_cookie_string[2:34])),
+                    ('parsed_cookie', obscure_token(request.cookie_session_field)),
                     ('at_request', obscure_token(request.safe_cookie_verified_session_id)),
                     ('at_response', obscure_token(request.session.session_key)),
                 ]
@@ -491,7 +491,7 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
 
                 # delete old session id for security
                 del request.safe_cookie_verified_session_id
-                del request.session_cookie_string
+                del request.cookie_session_field
 
                 extra_logs.append('Session changed.' if session_id_changed else 'Session did not change.')
 

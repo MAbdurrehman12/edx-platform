@@ -505,7 +505,7 @@ class SafeSessionMiddleware(SessionMiddleware, MiddlewareMixin):
                 )
                 for source_name, id_hash in session_hashes:
                     set_custom_attribute(f'safe_sessions.session_id_hash.{source_name}', id_hash)
-                set_custom_attribute(f'safe_sessions.session_id_changed', session_id_changed)
+                set_custom_attribute('safe_sessions.session_id_changed', session_id_changed)
 
                 if hasattr(request, 'debug_user_changes'):
                     extra_logs.append(

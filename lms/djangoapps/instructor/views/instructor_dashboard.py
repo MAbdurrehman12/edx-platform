@@ -237,6 +237,21 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
 
     certificate_invalidations = CertificateInvalidation.get_certificate_invalidations(course_key)
 
+    # x block asides enabled, included rapid response tab
+    if 'ol_openedx_rapid_response.app.RapidResponsePluginConfig' in settings.INSTALLED_APPS:
+        from openedx.core.djangoapps.plugins.constants import ProjectType
+        from edx_django_utils.plugins import get_plugins_view_context
+        from ol_openedx_rapid_response.constants import RAPID_RESPONSE_PLUGIN_VIEW_NAME  # pylint: disable=import-error
+
+        context_from_plugins = get_plugins_view_context(
+            ProjectType.LMS,
+            RAPID_RESPONSE_PLUGIN_VIEW_NAME,
+            {"course_key": course_key}
+        )
+        rapid_response_plugin_context = context_from_plugins['plugins'].get(RAPID_RESPONSE_PLUGIN_VIEW_NAME)
+        if rapid_response_plugin_context:
+            sections.append(rapid_response_plugin_context)
+
     context = {
         'course': course,
         'studio_url': get_studio_url(course, 'course'),

@@ -241,21 +241,6 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
 
     certificate_invalidations = CertificateInvalidation.get_certificate_invalidations(course_key)
 
-    # if 'ol_openedx_canvas_integration.app.CanvasIntegrationConfig' in settings.INSTALLED_APPS and course.canvas_course_id:  # pylint: disable=line-too-long
-        # from openedx.core.djangoapps.plugins.constants import ProjectType
-        # from edx_django_utils.plugins import get_plugins_view_context
-    #     from ol_openedx_canvas_integration.constants import CANVAS_INTEGRATION_PLUGIN_VIEW_NAME
-
-    #     context_from_plugins = get_plugins_view_context(
-    #         ProjectType.LMS,
-    #         CANVAS_INTEGRATION_PLUGIN_VIEW_NAME,
-    #         {"course": course}
-    #     )
-    #     print(f"CANVAS_INTEGRATION_CONTEXT={context_from_plugins}")
-    #     canvas_plugin_context = context_from_plugins['plugins'].get(CANVAS_INTEGRATION_PLUGIN_VIEW_NAME)
-    #     if canvas_plugin_context:
-    #         sections.append(canvas_plugin_context)
-
     context = {
         'course': course,
         'studio_url': get_studio_url(course, 'course'),
@@ -277,9 +262,6 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
         context
     )
     context.update(context_from_plugins)
-
-    import pdb
-    pdb.set_trace()
 
     return render_to_response('instructor/instructor_dashboard_2/instructor_dashboard_2.html', context)
 

@@ -51,6 +51,7 @@ from lms.djangoapps.courseware.courses import get_studio_url
 from lms.djangoapps.courseware.module_render import get_module_by_usage_id
 from lms.djangoapps.discussion.django_comment_client.utils import available_division_schemes, has_forum_access
 from lms.djangoapps.grades.api import is_writable_gradebook_enabled
+from lms.djangoapps.instructor.views.api import INCTRUCTOR_DASHBOARD_PLUGIN_VIEW_NAME
 from openedx.core.djangoapps.course_groups.cohorts import DEFAULT_COHORT_NAME, get_course_cohorts, is_course_cohorted
 from openedx.core.djangoapps.discussions.config.waffle_utils import legacy_discussion_experience_enabled
 from openedx.core.djangoapps.django_comment_common.models import FORUM_ROLE_ADMINISTRATOR, CourseDiscussionSettings
@@ -60,6 +61,7 @@ from openedx.core.djangolib.markup import HTML, Text
 from openedx.core.lib.courses import get_course_by_id
 from openedx.core.lib.url_utils import quote_slashes
 from openedx.core.lib.xblock_utils import wrap_xblock
+from openedx.core.djangoapps.plugins.constants import ProjectType
 from xmodule.html_module import HtmlBlock
 from xmodule.modulestore.django import modulestore
 from xmodule.tabs import CourseTab
@@ -67,6 +69,8 @@ from xmodule.tabs import CourseTab
 from .. import permissions
 from ..toggles import data_download_v2_is_enabled
 from .tools import get_units_with_due_date, title_or_url
+
+from edx_django_utils.plugins import get_plugins_view_context
 
 log = logging.getLogger(__name__)
 
@@ -147,9 +151,6 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
 
     if access['data_researcher']:
         sections.append(_section_data_download(course, access))
-
-    # if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False) and course.canvas_course_id:
-    #     sections.append(_section_canvas_integration(course))
 
     analytics_dashboard_message = None
     if show_analytics_dashboard_message(course_key) and (access['staff'] or access['instructor']):
@@ -240,21 +241,6 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
 
     certificate_invalidations = CertificateInvalidation.get_certificate_invalidations(course_key)
 
-    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False) and course.canvas_course_id:
-        from openedx.core.djangoapps.plugins.constants import ProjectType
-        from edx_django_utils.plugins import get_plugins_view_context
-        from ol_openedx_canvas_integration.constants import CANVAS_INTEGRATION_PLUGIN_VIEW_NAME
-
-        context_from_plugins = get_plugins_view_context(
-            ProjectType.LMS,
-            CANVAS_INTEGRATION_PLUGIN_VIEW_NAME,
-            {"course": course}
-        )
-        print(f"CANVAS_INTEGRATION_CONTEXT={context_from_plugins}")
-        canvas_plugin_context = context_from_plugins['plugins'].get(CANVAS_INTEGRATION_PLUGIN_VIEW_NAME)
-        if canvas_plugin_context:
-            sections.append(canvas_plugin_context)
-
     context = {
         'course': course,
         'studio_url': get_studio_url(course, 'course'),
@@ -269,6 +255,13 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
         'certificate_invalidation_view_url': certificate_invalidation_view_url,
         'xqa_server': settings.FEATURES.get('XQA_SERVER', "http://your_xqa_server.com"),
     }
+
+    context_from_plugins = get_plugins_view_context(
+        ProjectType.LMS,
+        INCTRUCTOR_DASHBOARD_PLUGIN_VIEW_NAME,
+        context
+    )
+    context.update(context_from_plugins)
 
     return render_to_response('instructor/instructor_dashboard_2/instructor_dashboard_2.html', context)
 
@@ -648,28 +641,6 @@ def _section_data_download(course, access):
     if not access.get('data_researcher'):
         section_data['is_hidden'] = True
     return section_data
-
-
-# def _section_canvas_integration(course):
-#     """ Provide data for the canvas dashboard section """
-#     return {
-#         'section_key': 'canvas_integration',
-#         'section_display_name': _('Canvas'),
-#         'course': course,
-#         'add_canvas_enrollments_url': reverse(
-#             'add_canvas_enrollments', kwargs={'course_id': course.id}
-#         ),
-#         "list_canvas_enrollments_url": reverse("list_canvas_enrollments", kwargs={"course_id": course.id}),
-#         "list_canvas_assignments_url": reverse("list_canvas_assignments", kwargs={"course_id": course.id}),
-#         "list_canvas_grades_url": reverse("list_canvas_grades", kwargs={"course_id": course.id}),
-#         'list_instructor_tasks_url': '{}?include_canvas=true'.format(reverse(
-#             'list_instructor_tasks',
-#             kwargs={'course_id': course.id}
-#         )),
-#         "push_edx_grades_url": reverse(
-#             "push_edx_grades", kwargs={"course_id": course.id}
-#         ),
-#     }
 
 
 def null_applicable_aside_types(block):  # pylint: disable=unused-argument

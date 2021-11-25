@@ -137,6 +137,8 @@ TASK_SUBMISSION_OK = 'created'
 SUCCESS_MESSAGE_TEMPLATE = _("The {report_type} report is being created. "
                              "To view the status of the report, see Pending Tasks below.")
 
+# Please avoid changing this constant as it is being used inside plugins
+INCTRUCTOR_DASHBOARD_PLUGIN_VIEW_NAME = "instructor_dashboard_plugin"
 
 def common_exceptions_400(func):
     """

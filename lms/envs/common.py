@@ -1220,7 +1220,7 @@ TEMPLATES = [
         'NAME': 'mako',
         'BACKEND': 'common.djangoapps.edxmako.backend.Mako',
         # Don't look for template source files inside installed applications.
-        'APP_DIRS': False,
+        'APP_DIRS': True,
         # Instead, look for template source files in these dirs.
         'DIRS': _make_mako_template_dirs,
         # Options specific to this backend.
